@@ -13,11 +13,11 @@ I thought to myself the other day, after looking at some code at work, "Wouldn't
 
 # What it does (currently)
 - Assign and use values as if you weren't using the wrapper
-- Ability to set on change callback method, callback object and parameters when creating the object. The method can be changed later.
-- Automatic type conversion to expose inner value.
+- Automatic type conversion to expose inner value (operator*, operator->, operator type&()).
 - Automatic type conversion is customisation per-type for both pointer and reference types.
 - A const version so that you can expose the properties, but require a secret key type to set them.
 - Equality checks when a value is set. If the value is different call an update function (this may be computationally expensive, I don't really care. Don't use it for everything?)
+- Ability to set on change callback method, callback object and parameters when creating the object. The method can be changed later.
 - Ability to override the equality operator for the above.
 - When used with TWeakPtr, TSharedPtr and TSharedRef, automatically dereferences the smart pointer to access the inner value.
 - Built in managed, unmanaged and scoped transaction support.
