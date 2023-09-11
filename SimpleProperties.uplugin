@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"Version": 0.1,
+	"VersionName": "0.1.0-alpha",
+	"FriendlyName": "Simple Properties",
+	"Description": "C# style properties with Unreal Engine integrations.",
+	"Category": "Experimental",
+	"CreatedBy": "Matt Chapman",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SimpleProperties",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
