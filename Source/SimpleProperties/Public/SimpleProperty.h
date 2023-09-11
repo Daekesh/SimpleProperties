@@ -201,28 +201,28 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	bool Set(FPrivateType Private, const InAssignType& InValue)
 	{
 		static_assert(!std::is_same_v<FPrivateType, UE::SimpleProperties::NoType>);
-		return SetInternal(InValue);
+		return SetInternal(InValue, OnChangeDelegate.IsBound());
 	}
 
 	template<typename InAssignType>
 	bool Set(FPrivateType Private, InAssignType&& InValue)
 	{
 		static_assert(!std::is_same_v<FPrivateType, UE::SimpleProperties::NoType>);
-		return SetInternal(MoveTemp(InValue));
+		return SetInternal(MoveTemp(InValue), OnChangeDelegate.IsBound());
 	}
 
 	template<typename InAssignType>
 	bool Set(FPrivateType Private, const TSimpleConstProperty<InAssignType>& InProperty)
 	{
 		static_assert(!std::is_same_v<FPrivateType, UE::SimpleProperties::NoType>);
-		return SetInternal(InProperty.Value);
+		return SetInternal(InProperty.Value, OnChangeDelegate.IsBound());
 	}
 
 	template<typename InAssignType>
 	bool Set(FPrivateType Private, TSimpleConstProperty<InAssignType>&& InProperty)
 	{
 		static_assert(!std::is_same_v<FPrivateType, UE::SimpleProperties::NoType>);
-		return SetInternal(MoveTemp(InProperty.Value));
+		return SetInternal(MoveTemp(InProperty.Value), OnChangeDelegate.IsBound());
 	}
 
 	void OnChange(ESimplePropertyChangeEventType InParam = ESimplePropertyChangeEventType::ExecuteIfBound)
@@ -504,9 +504,9 @@ protected:
 	}
 
 	template<typename InAssignType>
-	bool SetInternal(const InAssignType& InValue)
+	bool SetInternal(const InAssignType& InValue, bool bInCallEvent)
 	{
-		if (OnChangeDelegate.IsBound())
+		if (bInCallEvent)
 		{
 			// If the change event isn't bound, we don't need to check this.
 			if (IsEqual(InValue))
@@ -531,9 +531,9 @@ protected:
 	}
 
 	template<typename InAssignType>
-	bool SetInternal(InAssignType&& InValue)
+	bool SetInternal(InAssignType&& InValue, bool bInCallEvent)
 	{
-		if (OnChangeDelegate.IsBound())
+		if (bInCallEvent)
 		{
 			// If the change event isn't bound, we don't need to check this.
 			if (IsEqual(InValue))
@@ -625,25 +625,25 @@ struct TSimpleProperty : public TSimpleConstProperty<InValueType, InPrivateType>
 	template<typename InAssignType>
 	bool operator=(const InAssignType& InValue)
 	{
-		return Super::SetInternal(InValue);
+		return Super::SetInternal(InValue, Super::OnChangeDelegate.IsBound());
 	}
 
 	template<typename InAssignType>
 	bool operator=(InAssignType&& InValue)
 	{
-		return Super::SetInternal(MoveTemp(InValue));
+		return Super::SetInternal(MoveTemp(InValue), Super::OnChangeDelegate.IsBound());
 	}
 
 	template<typename InAssignType>
 	bool operator=(const TSimpleProperty<InAssignType>& InProperty)
 	{
-		return Super::SetInternal(InProperty.Value);
+		return Super::SetInternal(InProperty.Value, Super::OnChangeDelegate.IsBound());
 	}
 
 	template<typename InAssignType>
 	bool operator=(TSimpleProperty<InAssignType>&& InProperty)
 	{
-		return Super::SetInternal(MoveTemp(InProperty.Value));
+		return Super::SetInternal(MoveTemp(InProperty.Value), Super::OnChangeDelegate.IsBound());
 	}
 
 	operator FReferenceType&()
