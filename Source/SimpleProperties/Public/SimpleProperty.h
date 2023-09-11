@@ -32,6 +32,13 @@ enum class ESimplePropertyTransactionEndResult : uint8
 };
 #endif
 
+enum class ESimplePropertyChangeEventType : uint8
+{
+	ExecuteIfBound,
+	Execute,
+	Skip
+};
+
 // Base class defining the container and the data.
 template<typename InValueType>
 struct TSimplePropertyBase
@@ -218,9 +225,22 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 		return SetInternal(MoveTemp(InProperty.Value));
 	}
 
-	void OnChange()
+	void OnChange(ESimplePropertyChangeEventType InParam = ESimplePropertyChangeEventType::ExecuteIfBound)
 	{
-		OnChangeDelegate.ExecuteIfBound();
+		switch (InParam)
+		{
+			case ESimplePropertyChangeEventType::ExecuteIfBound:
+				OnChangeDelegate.ExecuteIfBound();
+				break;
+
+			case ESimplePropertyChangeEventType::Execute:
+				OnChangeDelegate.Execute();
+				break;
+
+			case ESimplePropertyChangeEventType::Skip:
+			default:
+				break;
+		}
 
 #if WITH_EDITOR
 		if (FSimplePropertyTransactionManager::IsValidTransactionId(TransactionId))
@@ -486,14 +506,26 @@ protected:
 	template<typename InAssignType>
 	bool SetInternal(const InAssignType& InValue)
 	{
-		if (IsEqual(InValue))
+		if (OnChangeDelegate.IsBound())
 		{
-			return false;
+			// If the change event isn't bound, we don't need to check this.
+			if (IsEqual(InValue))
+			{
+				return false;
+			}
+
+			Base::Value = InValue;
+			
+			constexpr ESimplePropertyChangeEventType CallEvent = ESimplePropertyChangeEventType::Execute;
+			OnChange(CallEvent);
 		}
-
-		Base::Value = InValue;
-
-		OnChange();
+		else
+		{
+			Base::Value = InValue;
+			
+			constexpr ESimplePropertyChangeEventType CallEvent = ESimplePropertyChangeEventType::Skip;
+			OnChange(CallEvent);
+		}
 
 		return true;
 	}
@@ -501,14 +533,26 @@ protected:
 	template<typename InAssignType>
 	bool SetInternal(InAssignType&& InValue)
 	{
-		if (IsEqual(InValue))
+		if (OnChangeDelegate.IsBound())
 		{
-			return false;
+			// If the change event isn't bound, we don't need to check this.
+			if (IsEqual(InValue))
+			{
+				return false;
+			}
+
+			Base::Value = MoveTemp(InValue);
+
+			constexpr ESimplePropertyChangeEventType CallEvent = ESimplePropertyChangeEventType::Execute;
+			OnChange(CallEvent);
 		}
+		else
+		{
+			Base::Value = MoveTemp(InValue);
 
-		Base::Value = MoveTemp(InValue);
-
-		OnChange();
+			constexpr ESimplePropertyChangeEventType CallEvent = ESimplePropertyChangeEventType::Skip;
+			OnChange(CallEvent);
+		}
 
 		return true;
 	}
