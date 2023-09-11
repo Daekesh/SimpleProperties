@@ -29,7 +29,7 @@ public:
 
 	bool HasManagedTransaction() const;
 
-	/** Attempts to start a transaction. Returns it if successful. */
+	/** Attempts to start a managed transaction. Returns the transaction index if successful, invalid index if not. */
 	int32 StartManagedTransaction(const FText& InTransactionDescription, UObject* InPrimaryObject = nullptr);
 
 	/** Cancels the managed transaction if this is the currently managed one. */
@@ -38,10 +38,10 @@ public:
 	/** Ends the managed transaction if this is the currently managed one. */
 	bool EndManagedTransaction(int32 InTransactionId);
 
-	/** Cancels the managed transaction if this is the currently managed one. */
+	/** Cancels the unmanaged transaction if this is not the currently managed one. */
 	bool CancelUnmanagedTransaction(int32 InTransactionId);
 
-	/** Ends the managed transaction if this is the currently managed one. */
+	/** Ends the unmanaged transaction if this is not the currently managed one. */
 	bool EndUnmanagedTransaction(int32 InTransactionId);
 
 protected:
