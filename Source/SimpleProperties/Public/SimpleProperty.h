@@ -116,7 +116,8 @@ protected:
 };
 
 // Const property that requires a private key type to set (define in owning class)
-template<typename InValueType, typename InPrivateType = UE::SimpleProperties::NoType
+template<typename InValueType, 
+	typename InPrivateType = UE::SimpleProperties::NoType
 	UE_REQUIRES(TOr<TOr<
 			TModels<CEqualityComparable, InValueType>,
 			TModels<CEqualityEquals, InValueType>>,
@@ -136,12 +137,14 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	TSimpleConstProperty()
 		: Base()
 		, OnChangeDelegate(FSimplePropertyOnChange::FDelegate())
+		, bHasOnChange(false)
 	{
 	}
 
 	TSimpleConstProperty(const TSimpleConstProperty& InOther)
 		: Base(InOther.Value)
 		, OnChangeDelegate(InOther.OnChangeDelegate)
+		, bHasOnChange(OnChangeDelegate.IsBound())
 #if WITH_EDITOR
 		, bModifiedInTransaction(InOther.bModifiedInTransaction)
 #endif
@@ -151,6 +154,7 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	TSimpleConstProperty(TSimpleConstProperty&& InOther)
 		: Base(Forward<FValueType>(InOther.Value))
 		, OnChangeDelegate(MoveTemp(InOther.OnChangeDelegate))
+		, bHasOnChange(OnChangeDelegate.IsBound())
 #if WITH_EDITOR
 		, TransactionId(InOther.TransactionId)
 		, bModifiedInTransaction(InOther.bModifiedInTransaction)
@@ -161,6 +165,7 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	TSimpleConstProperty(FSimplePropertyOnChange&& InUpdateFunc)
 		: Base()
 		, OnChangeDelegate(MoveTemp(InUpdateFunc.Callback))
+		, bHasOnChange(OnChangeDelegate.IsBound())
 	{
 	}
 
@@ -169,6 +174,7 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	TSimpleConstProperty(const InAssignType& InDefaultValue)
 		: Base(InDefaultValue)
 		, OnChangeDelegate(FSimplePropertyOnChange::FDelegate())
+		, bHasOnChange(false)
 	{
 	}
 
@@ -177,6 +183,7 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	TSimpleConstProperty(InAssignType&& InDefaultValue)
 		: Base(Forward<InAssignType>(InDefaultValue))
 		, OnChangeDelegate(FSimplePropertyOnChange::FDelegate())
+		, bHasOnChange(OnChangeDelegate.IsBound())
 	{
 	}
 
@@ -185,6 +192,7 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	TSimpleConstProperty(const InAssignType& InDefaultValue, FSimplePropertyOnChange&& InUpdateFunc)
 		: Base(InDefaultValue)
 		, OnChangeDelegate(MoveTemp(InUpdateFunc.Callback))
+		, bHasOnChange(OnChangeDelegate.IsBound())
 	{
 	}
 
@@ -193,6 +201,7 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	TSimpleConstProperty(InAssignType&& InDefaultValue, FSimplePropertyOnChange&& InUpdateFunc)
 		: Base(Forward<InAssignType>(InDefaultValue))
 		, OnChangeDelegate(MoveTemp(InUpdateFunc.Callback))
+		, bHasOnChange(OnChangeDelegate.IsBound())
 	{
 	}
 
@@ -201,45 +210,48 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	bool Set(FPrivateType Private, const InAssignType& InValue)
 	{
 		static_assert(!std::is_same_v<FPrivateType, UE::SimpleProperties::NoType>);
-		return SetInternal(InValue, OnChangeDelegate.IsBound());
+		return SetInternal(InValue);
 	}
 
 	template<typename InAssignType>
 	bool Set(FPrivateType Private, InAssignType&& InValue)
 	{
 		static_assert(!std::is_same_v<FPrivateType, UE::SimpleProperties::NoType>);
-		return SetInternal(MoveTemp(InValue), OnChangeDelegate.IsBound());
+		return SetInternal(MoveTemp(InValue));
 	}
 
 	template<typename InAssignType>
 	bool Set(FPrivateType Private, const TSimpleConstProperty<InAssignType>& InProperty)
 	{
 		static_assert(!std::is_same_v<FPrivateType, UE::SimpleProperties::NoType>);
-		return SetInternal(InProperty.Value, OnChangeDelegate.IsBound());
+		return SetInternal(InProperty.Value);
 	}
 
 	template<typename InAssignType>
 	bool Set(FPrivateType Private, TSimpleConstProperty<InAssignType>&& InProperty)
 	{
 		static_assert(!std::is_same_v<FPrivateType, UE::SimpleProperties::NoType>);
-		return SetInternal(MoveTemp(InProperty.Value), OnChangeDelegate.IsBound());
+		return SetInternal(MoveTemp(InProperty.Value));
 	}
 
 	void OnChange(ESimplePropertyChangeEventType InParam = ESimplePropertyChangeEventType::ExecuteIfBound)
 	{
-		switch (InParam)
+		if (bHasOnChange)
 		{
-			case ESimplePropertyChangeEventType::ExecuteIfBound:
-				OnChangeDelegate.ExecuteIfBound();
-				break;
+			switch (InParam)
+			{
+				case ESimplePropertyChangeEventType::ExecuteIfBound:
+					OnChangeDelegate.ExecuteIfBound();
+					break;
 
-			case ESimplePropertyChangeEventType::Execute:
-				OnChangeDelegate.Execute();
-				break;
+				case ESimplePropertyChangeEventType::Execute:
+					OnChangeDelegate.Execute();
+					break;
 
-			case ESimplePropertyChangeEventType::Skip:
-			default:
-				break;
+				case ESimplePropertyChangeEventType::Skip:
+				default:
+					break;
+			}
 		}
 
 #if WITH_EDITOR
@@ -253,6 +265,7 @@ template<typename InValueType, typename InPrivateType = UE::SimpleProperties::No
 	void SetOnChange(FSimplePropertyOnChange::FDelegate InCallback)
 	{
 		OnChangeDelegate = InCallback;
+		bHasOnChange = OnChangeDelegate.IsBound();
 	}
 
 #if WITH_EDITOR
@@ -494,7 +507,8 @@ protected:
 
 #if WITH_EDITOR
 	int32 TransactionId = FSimplePropertyTransactionManager::GetInvalidTransactionId();
-	bool bModifiedInTransaction = false;
+	uint8 bHasOnChange : 1 = false;
+	uint8 bModifiedInTransaction : 1 = false;
 #endif
 
 	template<typename InCompareType>
@@ -504,9 +518,9 @@ protected:
 	}
 
 	template<typename InAssignType>
-	bool SetInternal(const InAssignType& InValue, bool bInCallEvent)
+	bool SetInternal(const InAssignType& InValue)
 	{
-		if (bInCallEvent)
+		if (bHasOnChange)
 		{
 			// If the change event isn't bound, we don't need to check this.
 			if (IsEqual(InValue))
@@ -531,9 +545,9 @@ protected:
 	}
 
 	template<typename InAssignType>
-	bool SetInternal(InAssignType&& InValue, bool bInCallEvent)
+	bool SetInternal(InAssignType&& InValue)
 	{
-		if (bInCallEvent)
+		if (bHasOnChange)
 		{
 			// If the change event isn't bound, we don't need to check this.
 			if (IsEqual(InValue))
@@ -559,7 +573,8 @@ protected:
 };
 
 // Can be get and set by anything
-template<typename InValueType, typename InPrivateType = UE::SimpleProperties::NoType
+template<typename InValueType, 
+	typename InPrivateType = UE::SimpleProperties::NoType
 	UE_REQUIRES(TOr<TOr<
 			TModels<CEqualityComparable, InValueType>, 
 			TModels<CEqualityEquals, InValueType>>, 
@@ -625,25 +640,25 @@ struct TSimpleProperty : public TSimpleConstProperty<InValueType, InPrivateType>
 	template<typename InAssignType>
 	bool operator=(const InAssignType& InValue)
 	{
-		return Super::SetInternal(InValue, Super::OnChangeDelegate.IsBound());
+		return Super::SetInternal(InValue);
 	}
 
 	template<typename InAssignType>
 	bool operator=(InAssignType&& InValue)
 	{
-		return Super::SetInternal(MoveTemp(InValue), Super::OnChangeDelegate.IsBound());
+		return Super::SetInternal(MoveTemp(InValue));
 	}
 
 	template<typename InAssignType>
 	bool operator=(const TSimpleProperty<InAssignType>& InProperty)
 	{
-		return Super::SetInternal(InProperty.Value, Super::OnChangeDelegate.IsBound());
+		return Super::SetInternal(InProperty.Value);
 	}
 
 	template<typename InAssignType>
 	bool operator=(TSimpleProperty<InAssignType>&& InProperty)
 	{
-		return Super::SetInternal(MoveTemp(InProperty.Value), Super::OnChangeDelegate.IsBound());
+		return Super::SetInternal(MoveTemp(InProperty.Value));
 	}
 
 	operator FReferenceType&()
